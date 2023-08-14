@@ -3,3 +3,6 @@ obj
 data
 .DS_Store
 license.json
+.vscode
+Properties
+oauth-agent-dotnet.sln
