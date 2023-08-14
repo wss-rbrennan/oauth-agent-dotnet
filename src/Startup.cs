@@ -28,6 +28,7 @@ namespace IO.Curity.OAuthAgent
             this.ConfigureMiddleware(app);
 
             app.UseEndpoints(endpoints => {
+                endpoints.MapHealthChecks("/health/liveness");
                 endpoints.MapControllers();
             });
         }
@@ -51,7 +52,7 @@ namespace IO.Curity.OAuthAgent
                         });
                 });
             }
-
+            services.AddHealthChecks();
             services.AddControllers();
             this.ConfigureDependencies(services);
         }
