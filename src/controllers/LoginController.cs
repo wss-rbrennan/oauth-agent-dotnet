@@ -33,20 +33,21 @@ namespace IO.Curity.OAuthAgent.Controllers
         /*
          * Create the OpenID Connect request URL and set temporary cookies with the state and code verifier
          */
+
         [HttpPost("login/start")]
         public StartAuthorizationResponse StartLogin(
-            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] StartAuthorizationParameters parameters)
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] StartAuthorizationParameters? parameters)
         {
             // First check that the web origin is allowed
             this.requestValidator.ValidateRequest(this.HttpContext.Request, requireCsrfHeader: false);
 
             // Produce the authentication request URL for the SPA
             var data = this.loginHandler.CreateAuthorizationRequest(parameters);
-            
+
             // Store a temp login cookie
             var (name, value, options) = this.cookieManager.CreateTempLoginStateCookie(data.State, data.CodeVerifier);
             this.Response.Cookies.Append(name, value, options);
-        
+
             // Give the URL to the SPA, which manages its own redirect
             return new StartAuthorizationResponse(data.AuthorizationRequestUrl);
         }
@@ -54,13 +55,14 @@ namespace IO.Curity.OAuthAgent.Controllers
         /*
          * Handle OpenID Connect front channel responses, redeem the code for tokens, and write cookies
          */
+
         [HttpPost("login/end")]
         public async Task<EndAuthorizationResponse> EndLogin(
             [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] EndAuthorizationRequest data)
         {
             // First check that the web origin is allowed
             this.requestValidator.ValidateRequest(this.HttpContext.Request, requireCsrfHeader: false);
-            
+
             // Next process the payload
             if (data == null)
             {
@@ -104,8 +106,8 @@ namespace IO.Curity.OAuthAgent.Controllers
 
                 // Issue cookies containing tokens, and cookies are small when opaque tokens are used
                 var cookies = this.cookieManager.CreateCookies(tokenResponse, csrfToken);
-                cookies.ForEach(cookie => {
-
+                cookies.ForEach(cookie =>
+                {
                     var (name, value, options) = cookie;
                     this.Response.Cookies.Delete(name);
                     this.Response.Cookies.Append(name, value, options);

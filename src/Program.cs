@@ -18,11 +18,12 @@ namespace IO.Curity.OAuthAgent
         /*
          * The dev settings file is used only for development overrides, and not deployed
          */
+
         private static IWebHost BuildWebHost()
         {
             var configurationRoot = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile("appsettings-dev.json", optional: true)
                 .Build();
 
@@ -42,8 +43,8 @@ namespace IO.Curity.OAuthAgent
                 {
                     services.AddSingleton(configuration);
                 })
-                .ConfigureLogging(loggingBuilder => {
-                    
+                .ConfigureLogging(loggingBuilder =>
+                {
                     loggingBuilder.ClearProviders();
                     loggingBuilder.AddConfiguration(configurationRoot.GetSection("Logging"));
                     loggingBuilder.AddConsole();
@@ -61,6 +62,5 @@ namespace IO.Curity.OAuthAgent
                 .UseStartup<Startup>()
                 .Build();
         }
-
     }
 }
