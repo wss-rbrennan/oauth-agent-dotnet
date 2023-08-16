@@ -2,6 +2,7 @@ namespace IO.Curity.OAuthAgent
 {
     using System;
     using System.Collections.Generic;
+    using System.Net;
     using System.Net.Http;
     using System.Net.Http.Headers;
     using System.Net.Http.Json;
@@ -13,6 +14,7 @@ namespace IO.Curity.OAuthAgent
     /*
      * A class to interact with the authorization server, using standards based messages
      */
+
     public class AuthorizationServerClient
     {
         private readonly OAuthAgentConfiguration configuration;
@@ -25,38 +27,43 @@ namespace IO.Curity.OAuthAgent
         /*
          * Send the authorization code and receive tokens
          */
+
         public async Task<TokenResponse> RedeemCodeForTokens(string code, string codeVerifier)
         {
-            using (var client = new HttpClient())
+            using (var handler = new HttpClientHandler())
             {
-                client.DefaultRequestHeaders.Add("accept", "application/json");
-
-                var credential = $"{this.configuration.ClientID}:{this.configuration.ClientSecret}";
-                var basicCredential = Convert.ToBase64String(Encoding.UTF8.GetBytes(credential));
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicCredential);
-
-                var data = new[]
+                handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                using (var client = new HttpClient(handler))
                 {
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.Add("host", "featbit.example");
+
+                    var credential = $"{this.configuration.ClientID}:{this.configuration.ClientSecret}";
+                    var basicCredential = Convert.ToBase64String(Encoding.UTF8.GetBytes(credential));
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicCredential);
+
+                    var data = new[]
+                    {
                     new KeyValuePair<string, string>("grant_type", "authorization_code"),
                     new KeyValuePair<string, string>("redirect_uri", this.configuration.RedirectUri),
                     new KeyValuePair<string, string>("code", code),
                     new KeyValuePair<string, string>("code_verifier", codeVerifier),
                 };
 
-                try {
-                
-                    var response = await client.PostAsync(this.configuration.TokenEndpoint, new FormUrlEncodedContent(data));
-                    if (!response.IsSuccessStatusCode)
+                    try
                     {
-                        throw await this.CreateAuthorizationServerError(response, GrantType.AuthorizationCode);
-                    }
+                        var response = await client.PostAsync(this.configuration.TokenEndpoint, new FormUrlEncodedContent(data));
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            throw await this.CreateAuthorizationServerError(response, GrantType.AuthorizationCode);
+                        }
 
-                    return await response.Content.ReadFromJsonAsync<TokenResponse>();
-                
-                }
-                catch (HttpRequestException exception)
-                {
-                    throw new AuthorizationServerException("Connectivity problem during an Authorization Code Grant", exception);
+                        return await response.Content.ReadFromJsonAsync<TokenResponse>();
+                    }
+                    catch (HttpRequestException exception)
+                    {
+                        throw new AuthorizationServerException("Connectivity problem during an Authorization Code Grant", exception);
+                    }
                 }
             }
         }
@@ -64,6 +71,7 @@ namespace IO.Curity.OAuthAgent
         /*
          * Send the refresh token and receive a new set of tokens
          */
+
         public async Task<TokenResponse> RefreshAccessToken(string refreshToken)
         {
             using (var client = new HttpClient())
@@ -80,8 +88,8 @@ namespace IO.Curity.OAuthAgent
                     new KeyValuePair<string, string>("refresh_token", refreshToken),
                 };
 
-                try {
-                
+                try
+                {
                     var response = await client.PostAsync(this.configuration.TokenEndpoint, new FormUrlEncodedContent(data));
                     if (!response.IsSuccessStatusCode)
                     {
@@ -100,6 +108,7 @@ namespace IO.Curity.OAuthAgent
         /*
          * Send an access token and receive user info
          */
+
         public async Task<IDictionary<string, object>> GetUserInfo(string accessToken)
         {
             using (var client = new HttpClient())
